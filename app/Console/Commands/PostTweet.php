@@ -4,6 +4,11 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http; // fazer chamadas à API do Twitter
+use Illuminate\Support\Facades\Log; // Para Log::info() e Log::error()
+use GuzzleHttp\Client; // Para new Client()
+use GuzzleHttp\Exception\ClientException; // Para catch (ClientException $e)
+use Exception; // Para catch (Exception $e)
+
 
 class PostTweet extends Command
 {
