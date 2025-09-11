@@ -35,28 +35,57 @@ class PostTweet extends Command
      */
     public function handle()
     {
-        // 1. Recupera a mensagem passada como argumento
         $message = $this->argument('message');
 
-        //2. Simulação de postagem no Twitter
-        $this->info("Postando tweet: '$message'");
+        // 1. Validação Básica
+        if (strlen($message) > 280) {
+            $this->error('A mensagem excede o limite de 280 caracteres do Twitter.');
+            return;
+        }
 
+        // 2. Configuração do Cliente HTTP Guzzle com OAuth 1.0a
+        $stack = \GuzzleHttp\HandlerStack::create();
 
+        $middleware = new \GuzzleHttp\Subscriber\Oauth\Oauth1([
+            'consumer_key'    => config('twitter.consumer_key'),
+            'consumer_secret' => config('twitter.consumer_secret'),
+            'token'           => config('twitter.access_token'),
+            'token_secret'    => config('twitter.access_token_secret'),
+        ]);
 
-        // TODO [FASE 2]: Substituir por lógica real da API do Twitter v2
-        // $response = Http::withToken(config('services.twitter.access_token'))
-        //     ->post('https://api.twitter.com/2/tweets', ['text' => $message]);
-        //
-        // if ($response->successful()) {
-        //     $this->info('Tweet postado com sucesso!');
-        //     $this->info('ID do Tweet: ' . $response->json()['data']['id']);
-        // } else {
-        //     $this->error('Falha ao postar tweet: ' . $response->body());
-        // }
+        $stack->push($middleware);
 
-        //3. Simulação de sucesso (Teste de fluxo)
-        // Em produção, remover essa linha e usar a lógica real da API
-        $this->info("✅ Simulação: Tweet '$message' postado com sucesso!");
+        $client = new Client([
+            'base_uri' => 'https://api.twitter.com/2/',
+            'handler' => $stack,
+            'auth' => 'oauth' // Isso diz ao Guzzle para usar o middleware OAuth
+        ]);
 
+        try {
+            $this->info("Enviando tweet para a API do Twitter: '$message'");
+
+            // 3. Faz a requisição POST para a API v2
+            $response = $client->post('tweets', [
+                'json' => ['text' => $message]
+            ]);
+
+            // 4. Processa a resposta de sucesso
+            $body = json_decode($response->getBody(), true);
+            $tweetId = $body['data']['id'];
+
+            $this->info("✅ Tweet postado com sucesso!");
+            $this->info("🔗 ID do Tweet: " . $tweetId);
+            $this->info("👀 Veja em: https://twitter.com/user/status/" . $tweetId);
+
+            Log::info('Tweet postado', ['id' => $tweetId, 'text' => $message]);
+        } catch (ClientException $e) {
+            $errorResponse = json_decode($e->getResponse()->getBody()->getContents(), true);
+            $this->error('❌ Erro da API do Twitter: ' . $e->getMessage());
+            $this->error('Detalhes: ' . print_r($errorResponse, true));
+            Log::error('Erro ao postar tweet', ['error' => $errorResponse]);
+        } catch (Exception $e) {
+            $this->error('❌ Erro inesperado: ' . $e->getMessage());
+            Log::error('Erro inesperado ao postar tweet', ['error' => $e->getMessage()]);
+        }
     }
 }
