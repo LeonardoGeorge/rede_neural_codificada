@@ -699,7 +699,7 @@
                 </div>
             </div>
             <div class="copyright">
-                <p>&copy; 2025 RNH - Rede Neural Humana. Todos os direitos reservados.</p>
+                <p>&copy; 2025 RNH - Rede Neural Humana. Todos os direitos reservados | Leonardo George Dev. 62.358.912/0001-97</p>
             </div>
         </div>
     </footer>
@@ -710,96 +710,102 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const recordBtn = document.getElementById('record-btn');
-            const voiceInput = document.getElementById('voice-input');
-            const startBtn = document.getElementById('start-btn');
-            const notification = document.getElementById('notification');
-            const notificationText = document.getElementById('notification-text');
-            const commandExamples = document.querySelectorAll('.command-example');
-            
-            // Configuração do CSRF Token para requisições AJAX
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            // Exemplo de comandos
-            commandExamples.forEach(example => {
-                example.addEventListener('click', () => {
-                    voiceInput.value = example.getAttribute('data-command');
-                    processCommand(voiceInput.value);
-                });
-            });
-            
-            // Botão de gravação
-            recordBtn.addEventListener('click', () => {
-                if (voiceInput.value.trim() !== '') {
-                    processCommand(voiceInput.value);
-                } else {
-                    showNotification('Por favor, digite um comando primeiro.', 'error');
-                }
-            });
-            
-            // Botão de começar
-            startBtn.addEventListener('click', () => {
-                voiceInput.focus();
-                showNotification('Digite ou clique em um comando de exemplo para começar.', 'success');
-            });
-            
-            // Processar comando
-            function processCommand(command) {
-                showNotification('Processando seu comando...', 'success');
-                
-                // Mudar ícone para indicar processamento
-                const icon = recordBtn.querySelector('i');
-                icon.className = 'loader';
-                
-                // Enviar comando para o backend
-                fetch('/api/voice-command', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    },
-                    body: JSON.stringify({ command: command })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Restaurar ícone
-                    icon.className = 'fas fa-play';
-                    
-                    if (data.status === 'success') {
-                        showNotification(data.message, 'success');
-                        voiceInput.value = '';
-                    } else {
-                        showNotification(data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    // Restaurar ícone em caso de erro
-                    icon.className = 'fas fa-play';
-                    showNotification('Erro de conexão. Tente novamente.', 'error');
-                    console.error('Error:', error);
-                });
-            }
-            
-            // Mostrar notificação
-            function showNotification(message, type) {
-                notification.className = 'notification ' + type;
-                notificationText.textContent = message;
-                notification.classList.add('show');
-                
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                }, 5000);
-            }
-            
-            // Permitir enviar comando com Enter
-            voiceInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    recordBtn.click();
-                }
+    document.addEventListener('DOMContentLoaded', function() {
+        const recordBtn = document.getElementById('record-btn');
+        const voiceInput = document.getElementById('voice-input');
+        const startBtn = document.getElementById('start-btn');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        const commandExamples = document.querySelectorAll('.command-example');
+        
+        // Configuração do CSRF Token para requisições AJAX
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        // Exemplo de comandos
+        commandExamples.forEach(example => {
+            example.addEventListener('click', () => {
+                voiceInput.value = example.getAttribute('data-command');
+                processCommand(voiceInput.value);
             });
         });
-    </script>
+        
+        // Botão de gravação
+        recordBtn.addEventListener('click', () => {
+            if (voiceInput.value.trim() !== '') {
+                processCommand(voiceInput.value);
+            } else {
+                showNotification('Por favor, digite um comando primeiro.', 'error');
+            }
+        });
+        
+        // Botão de começar
+        startBtn.addEventListener('click', () => {
+            voiceInput.focus();
+            showNotification('Digite ou clique em um comando de exemplo para começar.', 'success');
+        });
+        
+        // Processar comando
+        function processCommand(command) {
+            showNotification('Processando seu comando...', 'success');
+            
+            // Mudar ícone para indicar processamento
+            const icon = recordBtn.querySelector('i');
+            icon.className = 'loader';
+            
+            
+            fetch('/api/voice-command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Restaurar ícone
+                icon.className = 'fas fa-play';
+                
+                if (data.status === 'success') {
+                    showNotification(data.message, 'success');
+                    voiceInput.value = '';
+                } else {
+                    showNotification(data.message || 'Erro desconhecido', 'error');
+                }
+            })
+            .catch(error => {
+                // Restaurar ícone em caso de erro
+                icon.className = 'fas fa-play';
+                showNotification('Erro de conexão. Tente novamente.', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        // Mostrar notificação
+        function showNotification(message, type) {
+            notification.className = 'notification ' + type;
+            notificationText.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Permitir enviar comando com Enter
+        voiceInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                recordBtn.click();
+            }
+        });
+    });
+</script>
 </body>
 
 </html>

@@ -20,10 +20,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-// Esta rota será: POST http://sua-app.com/api/voice-command
+// Rota para comando de texto (que é o que seu frontend está usando)
 Route::post('/voice-command', [VoiceCommandController::class, 'handleCommand']);
 
-// Rota para processamento de comando de voz
+// Rota para processamento de áudio (se for usar no futuro)
 Route::post('/voice/process', [VoiceCommandController::class, 'processVoiceCommand']);
 
 // Rota para health check

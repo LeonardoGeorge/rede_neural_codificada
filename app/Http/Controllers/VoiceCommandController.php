@@ -55,7 +55,8 @@ class VoiceCommandController extends Controller
             }
 
             // Processar comando de texto transcrito
-            return $this->handleCommand($transcribedText);
+            $fakeRequest = new Request(['command' => $transcribedText]);
+            return $this->handleCommand($fakeRequest);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -66,20 +67,34 @@ class VoiceCommandController extends Controller
 
     /**
      * Processa o comando de texto (NLP) e dispara o job para postar no Twitter
+     * AGORA RECEBENDO Request $request PARA PEGAR O COMANDO DO JSON
      */
-    public function handleCommand($commandText)
+    public function handleCommand(Request $request)
     {
-        Log::info("Comando de voz recebido: " . $commandText);
+        // Validar se o comando foi enviado no JSON
+        $validator = Validator::make($request->all(), [
+            'command' => 'required|string'
+        ]);
 
-        // 2. Processamento de Linguagem Natural (NLP) SIMPLES.
-        // Ex: Comando "Poste no Twitter Hello World" -> Intenção: 'post_tweet', Parâmetro: 'Hello World'
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Comando não fornecido',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $commandText = $request->input('command');
+        Log::info("Comando recebido via API: " . $commandText);
+
+        // Processamento de Linguagem Natural (NLP)
         if (preg_match('/poste no twitter (.*)/i', $commandText, $matches)) {
-            $tweetMessage = trim($matches[1]); // Captura "Hello World"
+            $tweetMessage = trim($matches[1]); // Captura a mensagem do tweet
 
-            // 3. Dispara o job para a fila, processando assincronamente!
+            // Dispara o job para a fila, processando assincronamente!
             ProcessTweetJob::dispatch($tweetMessage);
 
-            // 4. Responde imediatamente para o cliente (usuário)
+            // Responde imediatamente para o cliente (usuário)
             return response()->json([
                 'status' => 'success',
                 'message' => 'Seu tweet está sendo processado e será postado em breve!',
@@ -88,10 +103,10 @@ class VoiceCommandController extends Controller
             ]);
         }
 
-        // 5. Se o comando não for reconhecido
+        // Se o comando não for reconhecido
         return response()->json([
             'status' => 'error',
             'message' => 'Desculpe, não entendi o comando. Tente algo como: "Poste no Twitter Minha mensagem"',
-        ], 400); // Código HTTP 400 Bad Request
+        ], 400);
     }
 }
