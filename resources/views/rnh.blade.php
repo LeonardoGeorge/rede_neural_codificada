@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -192,6 +191,7 @@
             margin-bottom: 2rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: var(--transition);
+            position: relative;
         }
 
         .voice-command:focus-within {
@@ -292,50 +292,6 @@
         .command-example:hover p {
             color: var(--text-primary);
         }
-
-        /* Estilos para o indicador de gravação */
-        .recording-indicator{
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(239, 68, 68, 0.9);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 50px;
-            z-index: 1000;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        .recording-indicator i {
-            marigin-right: 8px;
-        }
-        .voice-input-container {
-            position: relative;
-            width: 100%;
-        }
-         .voice-mode-btn {
-            position: absolute;
-            right: 60px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: var(--transition);
-        }
-
-        .voice-mode-btn:hover {
-            color: var(--accent-blue);
-        }
-
 
         /* Features Section */
         .features {
@@ -584,6 +540,55 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Novos estilos para funcionalidade de voz */
+        .recording-indicator {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            z-index: 1000;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .voice-input-container {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .voice-mode-btn {
+            position: absolute;
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+            z-index: 2;
+        }
+
+        .voice-mode-btn:hover {
+            color: var(--accent-blue);
+        }
+
+        /* Ajuste para o input não ficar atrás do botão */
+        .voice-input-container input {
+            padding-right: 40px;
+        }
+
         /* Responsividade */
         @media (max-width: 768px) {
             .hero h1 {
@@ -616,6 +621,10 @@
             .cta h2 {
                 font-size: 2.25rem;
             }
+            
+            .voice-mode-btn {
+                right: 5px;
+            }
         }
     </style>
 </head>
@@ -637,25 +646,24 @@
             </nav>
         </div>
     </header>
+
     <div class="recording-indicator" id="recording-indicator">
         <i class="fas fa-microphone"></i> Gravando... Fale agora
     </div>
 
-    <section class="hero">
+   <section class="hero">
         <div class="container hero-content">
             <h1>O futuro da interação digital</h1>
             <p>Comandos de voz que transformam suas intenções em ações automáticas</p>
 
             <div class="hero-demo">
                 <div class="voice-command">
-                    <i class="fas fa-microphone"></i>
+                    <!-- ÍCONE DE MICROFONE AGORA CLICÁVEL -->
+                    <i class="fas fa-microphone" id="voice-toggle"></i>
                     <div class="voice-input-container">
                         <input type="text" id="voice-input" placeholder="Diga um comando... Ex: 'Poste no Twitter Olá mundo'">
-                        <button class="voice-mode-btn" id="toggle-voice-mode" title="Alternar modo de entrada">
-                            <i class="fas fa-keyboard"></i>
-                        </button>
                     </div>
-                    <button id="record-btn">
+                    <button id="action-btn">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>
@@ -763,14 +771,14 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const recordBtn = document.getElementById('record-btn');
+        const actionBtn = document.getElementById('action-btn');
+        const voiceToggle = document.getElementById('voice-toggle');
         const voiceInput = document.getElementById('voice-input');
         const startBtn = document.getElementById('start-btn');
         const notification = document.getElementById('notification');
         const notificationText = document.getElementById('notification-text');
         const commandExamples = document.querySelectorAll('.command-example');
         const recordingIndicator = document.getElementById('recording-indicator');
-        const toggleVoiceModeBtn = document.getElementById('toggle-voice-mode');
         
         // Configuração do CSRF Token para requisições AJAX
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -784,25 +792,25 @@
         // Verificar suporte a gravação de áudio
         const isRecordingSupported = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
         
-        if (!isRecordingSupported) {
-            console.warn('Gravação de áudio não suportada neste navegador');
-            toggleVoiceModeBtn.style.display = 'none';
-        }
-        
-        // Alternar entre modos de entrada (texto/voz)
-        toggleVoiceModeBtn.addEventListener('click', () => {
+        // Alternar entre modos de entrada (texto/voz) ao clicar no ícone do microfone
+        voiceToggle.addEventListener('click', () => {
+            if (!isRecordingSupported) {
+                showNotification('Seu navegador não suporta gravação de áudio.', 'error');
+                return;
+            }
+            
             isVoiceMode = !isVoiceMode;
             
             if (isVoiceMode) {
-                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-keyboard"></i>';
-                toggleVoiceModeBtn.title = 'Alternar para digitação';
+                voiceToggle.classList.add('voice-active');
                 voiceInput.placeholder = 'Clique no microfone e fale...';
-                recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                actionBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                showNotification('Modo voz ativado. Clique no microfone para gravar.', 'success');
             } else {
-                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                toggleVoiceModeBtn.title = 'Alternar para comando de voz';
+                voiceToggle.classList.remove('voice-active');
                 voiceInput.placeholder = 'Diga um comando... Ex: "Poste no Twitter Olá mundo"';
-                recordBtn.innerHTML = '<i class="fas fa-play"></i>';
+                actionBtn.innerHTML = '<i class="fas fa-play"></i>';
+                showNotification('Modo texto ativado. Digite seu comando.', 'success');
             }
         });
         
@@ -814,8 +822,8 @@
             });
         });
         
-        // Botão de gravação/execução
-        recordBtn.addEventListener('click', () => {
+        // Botão de ação (gravar/executar)
+        actionBtn.addEventListener('click', () => {
             if (isVoiceMode && isRecordingSupported) {
                 // Modo voz: iniciar/parar gravação
                 if (!isRecording) {
@@ -858,15 +866,17 @@
                 
                 mediaRecorder.start();
                 isRecording = true;
-                recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                voiceToggle.classList.remove('voice-active');
+                voiceToggle.classList.add('voice-listening');
+                actionBtn.innerHTML = '<i class="fas fa-stop"></i>';
                 recordingIndicator.style.display = 'block';
                 
             } catch (error) {
                 console.error('Erro ao acessar o microfone:', error);
                 showNotification('Não foi possível acessar o microfone. Verifique as permissões.', 'error');
                 isVoiceMode = false;
-                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                recordBtn.innerHTML = '<i class="fas fa-play"></i>';
+                voiceToggle.classList.remove('voice-active', 'voice-listening');
+                actionBtn.innerHTML = '<i class="fas fa-play"></i>';
             }
         }
         
@@ -875,7 +885,8 @@
             if (mediaRecorder && isRecording) {
                 mediaRecorder.stop();
                 isRecording = false;
-                recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                voiceToggle.classList.remove('voice-listening');
+                actionBtn.innerHTML = '<i class="fas fa-microphone"></i>';
                 recordingIndicator.style.display = 'none';
             }
         }
@@ -926,7 +937,7 @@
             showNotification('Processando seu comando...', 'success');
             
             // Mudar ícone para indicar processamento
-            const icon = recordBtn.querySelector('i');
+            const icon = actionBtn.querySelector('i');
             icon.className = 'loader';
             
             fetch('/api/voice-command', {
@@ -977,11 +988,10 @@
         // Permitir enviar comando com Enter (apenas no modo texto)
         voiceInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !isVoiceMode) {
-                recordBtn.click();
+                actionBtn.click();
             }
         });
     });
     </script>
 </body>
-
 </html>
