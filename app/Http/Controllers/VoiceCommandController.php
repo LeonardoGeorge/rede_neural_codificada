@@ -54,10 +54,14 @@ class VoiceCommandController extends Controller
                 ], 500);
             }
 
-            // Processar comando de texto transcrito
-            $fakeRequest = new Request(['command' => $transcribedText]);
-            return $this->handleCommand($fakeRequest);
+            // Retornar o texto transcrito
+            return response()->json([
+                'success' => true,
+                'transcribed_text' => $transcribedText,
+                'message' => 'Áudio transcrito com sucesso'
+            ]);
         } catch (\Exception $e) {
+            Log::error('Erro no processamento de voz: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Erro interno do servidor: ' . $e->getMessage()
@@ -68,6 +72,9 @@ class VoiceCommandController extends Controller
     /**
      * Processa o comando de texto (NLP) e dispara o job para postar no Twitter
      * AGORA RECEBENDO Request $request PARA PEGAR O COMANDO DO JSON
+     */
+    /**
+     * Processa o comando de texto (NLP) e dispara o job para postar no Twitter
      */
     public function handleCommand(Request $request)
     {
