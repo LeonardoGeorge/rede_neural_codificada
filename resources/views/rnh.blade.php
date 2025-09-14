@@ -293,6 +293,50 @@
             color: var(--text-primary);
         }
 
+        /* Estilos para o indicador de gravação */
+        .recording-indicator{
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            z-index: 1000;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .recording-indicator i {
+            marigin-right: 8px;
+        }
+        .voice-input-container {
+            position: relative;
+            width: 100%;
+        }
+         .voice-mode-btn {
+            position: absolute;
+            right: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .voice-mode-btn:hover {
+            color: var(--accent-blue);
+        }
+
+
         /* Features Section */
         .features {
             padding: 8rem 0;
@@ -593,6 +637,9 @@
             </nav>
         </div>
     </header>
+    <div class="recording-indicator" id="recording-indicator">
+        <i class="fas fa-microphone"></i> Gravando... Fale agora
+    </div>
 
     <section class="hero">
         <div class="container hero-content">
@@ -602,7 +649,12 @@
             <div class="hero-demo">
                 <div class="voice-command">
                     <i class="fas fa-microphone"></i>
-                    <input type="text" id="voice-input" placeholder="Diga um comando... Ex: 'Poste no Twitter Olá mundo'">
+                    <div class="voice-input-container">
+                        <input type="text" id="voice-input" placeholder="Diga um comando... Ex: 'Poste no Twitter Olá mundo'">
+                        <button class="voice-mode-btn" id="toggle-voice-mode" title="Alternar modo de entrada">
+                            <i class="fas fa-keyboard"></i>
+                        </button>
+                    </div>
                     <button id="record-btn">
                         <i class="fas fa-play"></i>
                     </button>
@@ -717,9 +769,42 @@
         const notification = document.getElementById('notification');
         const notificationText = document.getElementById('notification-text');
         const commandExamples = document.querySelectorAll('.command-example');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const toggleVoiceModeBtn = document.getElementById('toggle-voice-mode');
         
         // Configuração do CSRF Token para requisições AJAX
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        // Variáveis para controle de gravação
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isVoiceMode = false;
+        
+        // Verificar suporte a gravação de áudio
+        const isRecordingSupported = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+        
+        if (!isRecordingSupported) {
+            console.warn('Gravação de áudio não suportada neste navegador');
+            toggleVoiceModeBtn.style.display = 'none';
+        }
+        
+        // Alternar entre modos de entrada (texto/voz)
+        toggleVoiceModeBtn.addEventListener('click', () => {
+            isVoiceMode = !isVoiceMode;
+            
+            if (isVoiceMode) {
+                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-keyboard"></i>';
+                toggleVoiceModeBtn.title = 'Alternar para digitação';
+                voiceInput.placeholder = 'Clique no microfone e fale...';
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            } else {
+                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                toggleVoiceModeBtn.title = 'Alternar para comando de voz';
+                voiceInput.placeholder = 'Diga um comando... Ex: "Poste no Twitter Olá mundo"';
+                recordBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        });
         
         // Exemplo de comandos
         commandExamples.forEach(example => {
@@ -729,12 +814,22 @@
             });
         });
         
-        // Botão de gravação
+        // Botão de gravação/execução
         recordBtn.addEventListener('click', () => {
-            if (voiceInput.value.trim() !== '') {
-                processCommand(voiceInput.value);
+            if (isVoiceMode && isRecordingSupported) {
+                // Modo voz: iniciar/parar gravação
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
             } else {
-                showNotification('Por favor, digite um comando primeiro.', 'error');
+                // Modo texto: processar comando digitado
+                if (voiceInput.value.trim() !== '') {
+                    processCommand(voiceInput.value);
+                } else {
+                    showNotification('Por favor, digite um comando primeiro.', 'error');
+                }
             }
         });
         
@@ -744,6 +839,88 @@
             showNotification('Digite ou clique em um comando de exemplo para começar.', 'success');
         });
         
+        // Iniciar gravação
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await sendAudioToServer(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                recordingIndicator.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Erro ao acessar o microfone:', error);
+                showNotification('Não foi possível acessar o microfone. Verifique as permissões.', 'error');
+                isVoiceMode = false;
+                toggleVoiceModeBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                recordBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        }
+        
+        // Parar gravação
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                recordingIndicator.style.display = 'none';
+            }
+        }
+        
+        // Enviar áudio para o servidor
+        async function sendAudioToServer(audioBlob) {
+            showNotification('Processando seu áudio...', 'success');
+            
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'voice_command.webm');
+            
+            try {
+                const response = await fetch('/api/voice/process', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor: ' + response.status);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    voiceInput.value = data.transcribed_text || '';
+                    
+                    // Se temos texto transcrito, processar o comando
+                    if (data.transcribed_text && data.transcribed_text.trim() !== '') {
+                        processCommand(data.transcribed_text);
+                    } else {
+                        showNotification('Não foi possível entender o áudio. Tente novamente.', 'error');
+                    }
+                } else {
+                    showNotification(data.message || 'Erro no processamento de áudio', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showNotification('Erro de conexão. Tente novamente.', 'error');
+            }
+        }
+        
         // Processar comando
         function processCommand(command) {
             showNotification('Processando seu comando...', 'success');
@@ -751,7 +928,6 @@
             // Mudar ícone para indicar processamento
             const icon = recordBtn.querySelector('i');
             icon.className = 'loader';
-            
             
             fetch('/api/voice-command', {
                 method: 'POST',
@@ -770,7 +946,7 @@
             })
             .then(data => {
                 // Restaurar ícone
-                icon.className = 'fas fa-play';
+                icon.className = isVoiceMode ? 'fas fa-microphone' : 'fas fa-play';
                 
                 if (data.status === 'success') {
                     showNotification(data.message, 'success');
@@ -781,7 +957,7 @@
             })
             .catch(error => {
                 // Restaurar ícone em caso de erro
-                icon.className = 'fas fa-play';
+                icon.className = isVoiceMode ? 'fas fa-microphone' : 'fas fa-play';
                 showNotification('Erro de conexão. Tente novamente.', 'error');
                 console.error('Error:', error);
             });
@@ -798,14 +974,14 @@
             }, 5000);
         }
         
-        // Permitir enviar comando com Enter
+        // Permitir enviar comando com Enter (apenas no modo texto)
         voiceInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !isVoiceMode) {
                 recordBtn.click();
             }
         });
     });
-</script>
+    </script>
 </body>
 
 </html>
