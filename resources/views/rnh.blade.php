@@ -636,7 +636,7 @@
                 <div class="logo-icon">
                     <i class="fas fa-robot"></i>
                 </div>
-                <span>RNH</span>
+                <span>RNC</span>
             </a>
             <nav class="nav-links">
                 <a href="#features">Funcionalidades</a>

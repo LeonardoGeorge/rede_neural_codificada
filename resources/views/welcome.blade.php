@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RNH | Bem-vindo</title>
+    <title>RNC | Bem-vindo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -292,7 +292,7 @@
                 <div class="logo-icon">
                     <i class="fas fa-robot"></i>
                 </div>
-                <span>RNH</span>
+                <span>RNC</span>
             </a>
             <nav class="nav-links">
                 <a href="#about">Sobre</a>
@@ -304,13 +304,13 @@
 
     <main class="welcome-hero">
         <div class="container welcome-content">
-            <h1>Rede Neural Humana</h1>
+            <h1>Rede Neural Codificada</h1>
             <p>Revolucionando a forma como humanos e máquinas interagem</p>
             
             <div class="definition-box">
-                <h2><i class="fas fa-brain"></i> O que é a RNH?</h2>
-                <p>A Rede Neural Humana (RNH) é uma plataforma inteligente de assistência por comando de voz que utiliza processamento de linguagem natural e aprendizado de máquina para interpretar e executar tarefas complexas automaticamente.</p>
-                <p>Através de comandos intuitivos, a RNH conecta-se a diversas APIs e serviços, transformando suas intenções em ações concretas no mundo digital.</p>
+                <h2><i class="fas fa-brain"></i> O que é a RNC?</h2>
+                <p>A Rede Neural Codificada (RNC) é uma plataforma inteligente de assistência por comando de voz que utiliza processamento de linguagem natural e aprendizado de máquina para interpretar e executar tarefas complexas automaticamente.</p>
+                <p>Através de comandos intuitivos, a RNC conecta-se a diversas APIs e serviços, transformando suas intenções em ações concretas no mundo digital.</p>
             </div>
 
             <a href="/rnh" class="btn">
@@ -322,7 +322,7 @@
     <footer>
         <div class="container">
             <div class="copyright">
-                <p>&copy; 2025 RNH - Rede Neural Humana. Todos os direitos reservados | Leonardo George Dev. 62.358.912/0001-97</p>
+                <p>&copy; 2025 RNC - Rede Neural Codificada. Todos os direitos reservados | Leonardo George Dev. 62.358.912/0001-97</p>
             </div>
         </div>
     </footer>
