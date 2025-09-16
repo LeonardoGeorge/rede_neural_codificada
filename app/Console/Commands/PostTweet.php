@@ -46,13 +46,12 @@ class PostTweet extends Command
         // 2. Configuração do Cliente HTTP Guzzle com OAuth 1.0a
         $stack = \GuzzleHttp\HandlerStack::create();
 
-        $middleware = new \GuzzleHttp\Subscriber\Oauth\Oauth1([
-            'consumer_key'    => config('twitter.consumer_key'),
-            'consumer_secret' => config('twitter.consumer_secret'),
-            'token'           => config('twitter.access_token'),
-            'token_secret'    => config('twitter.access_token_secret'),
-        ]);
-
+$middleware = new \GuzzleHttp\Subscriber\Oauth\Oauth1([
+    'consumer_key'    => env('TWITTER_CONSUMER_KEY'),
+    'consumer_secret' => env('TWITTER_CONSUMER_SECRET'),
+    'token'           => env('TWITTER_ACCESS_TOKEN'),
+    'token_secret'    => env('TWITTER_ACCESS_TOKEN_SECRET'),
+]);
         $stack->push($middleware);
 
         $client = new Client([
