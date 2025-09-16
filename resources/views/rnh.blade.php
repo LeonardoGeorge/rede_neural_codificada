@@ -203,6 +203,7 @@
             color: var(--accent-blue);
             margin-right: 0.75rem;
             font-size: 1.25rem;
+            cursor: pointer;
         }
 
         .voice-command input {
@@ -291,13 +292,6 @@
 
         .command-example:hover p {
             color: var(--text-primary);
-        }
-        .voice-toggle.listening {
-            color: #ff4757 !important;
-            animation: pulse 1.5s infinite;
-        }
-        .voice-command i {
-            cursor: pointer;
         }
 
         /* Features Section */
@@ -596,6 +590,12 @@
             padding-right: 40px;
         }
 
+        /* NOVO: Estilo para o ícone quando está gravando */
+        .voice-toggle.listening {
+            color: #ff4757 !important;
+            animation: pulse 1.5s infinite;
+        }
+
         /* Responsividade */
         @media (max-width: 768px) {
             .hero h1 {
@@ -790,46 +790,49 @@
         // Configuração do CSRF Token para requisições AJAX
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
-        // Variáveis para controle de reconhecimento de voz ←←←
+        // →→→ NOVO: Variáveis para controle de reconhecimento de voz ←←←
         let isListening = false;
         let recognition = null;
         
-        // Verificar suporte a reconhecimento de voz ←←←
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const isSpeechSupported = SpeechRecognition !== undefined;
+        // →→→ NOVO: Verificar suporte a reconhecimento de voz ←←←
+        const isSpeechSupported = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
         
         if (isSpeechSupported) {
-            // Configurar o reconhecimento de voz ←←←
+            // →→→ NOVO: Configurar o reconhecimento de voz ←←←
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
             recognition.continuous = false;
             recognition.interimResults = false;
             recognition.lang = 'pt-BR';
             
-            // Evento quando o reconhecimento obtém resultado ←←←
+            // →→→ NOVO: Evento quando o reconhecimento obtém resultado ←←←
             recognition.onresult = function(event) {
                 const transcript = event.results[0][0].transcript;
                 voiceInput.value = transcript;
                 showNotification('Comando capturado com sucesso!', 'success');
+                
+                // →→→ NOVO: Processar automaticamente após capturar voz ←←←
+                processCommand(transcript);
             };
             
-            // Evento para tratar erros ←←←
+            // →→→ NOVO: Evento para tratar erros ←←←
             recognition.onerror = function(event) {
                 showNotification('Erro ao capturar áudio: ' + event.error, 'error');
                 stopListening();
             };
             
-            // Evento quando o reconhecimento termina ←←←
+            // →→→ NOVO: Evento quando o reconhecimento termina ←←←
             recognition.onend = function() {
                 stopListening();
             };
         } else {
-            // Feedback se o navegador não suportar reconhecimento de voz ←←←
+            // →→→ NOVO: Feedback se o navegador não suportar reconhecimento de voz ←←←
             voiceToggle.style.opacity = '0.5';
             voiceToggle.style.cursor = 'not-allowed';
             showNotification('Seu navegador não suporta reconhecimento de voz.', 'error');
         }
         
-        // ALTERADO: agora alterna entre escutar e para de escutar ←←←
+        // →→→ ALTERADO: Agora alterna entre escutar e parar de escutar ←←←
         voiceToggle.addEventListener('click', () => {
             if (!isSpeechSupported) return;
             
@@ -839,8 +842,8 @@
                 startListening();
             }
         });
-
-        // Função para iniciar a escuta ←←←
+        
+        // →→→ NOVO: Função para iniciar a escuta ←←←
         function startListening() {
             if (!isSpeechSupported) return;
             
@@ -859,7 +862,7 @@
             }
         }
         
-        // Função para parar a escuta ←←←
+        // →→→ NOVO: Função para parar a escuta ←←←
         function stopListening() {
             if (!isSpeechSupported) return;
             
@@ -876,36 +879,20 @@
             recordingIndicator.style.display = 'none';
             voiceInput.placeholder = 'Diga um comando... Ex: "Poste no Twitter Olá mundo"';
         }
-
-        // Variáveis para controle de gravação
-        let isRecording = false;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isVoiceMode = false;
         
-        // Verificar suporte a gravação de áudio
-        const isRecordingSupported = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-        
-        // Alternar entre modos de entrada (texto/voz) ao clicar no ícone do microfone
-        voiceToggle.addEventListener('click', () => {
-            if (!isRecordingSupported) {
-                showNotification('Seu navegador não suporta gravação de áudio.', 'error');
-                return;
-            }
-            
-            isVoiceMode = !isVoiceMode;
-            
-            if (isVoiceMode) {
-                voiceToggle.classList.add('voice-active');
-                voiceInput.placeholder = 'Clique no microfone e fale...';
-                actionBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-                showNotification('Modo voz ativado. Clique no microfone para gravar.', 'success');
+        // Botão de ação (executar comando)
+        actionBtn.addEventListener('click', () => {
+            if (voiceInput.value.trim() !== '') {
+                processCommand(voiceInput.value);
             } else {
-                voiceToggle.classList.remove('voice-active');
-                voiceInput.placeholder = 'Diga um comando... Ex: "Poste no Twitter Olá mundo"';
-                actionBtn.innerHTML = '<i class="fas fa-play"></i>';
-                showNotification('Modo texto ativado. Digite seu comando.', 'success');
+                showNotification('Por favor, digite ou fale um comando primeiro.', 'error');
             }
+        });
+        
+        // Botão de começar
+        startBtn.addEventListener('click', () => {
+            voiceInput.focus();
+            showNotification('Digite ou clique em um comando de exemplo para começar.', 'success');
         });
         
         // Exemplo de comandos
@@ -916,179 +903,65 @@
             });
         });
         
-        // Botão de ação (gravar/executar)
-        actionBtn.addEventListener('click', () => {
-            if (isVoiceMode && isRecordingSupported) {
-                // Modo voz: iniciar/parar gravação
-                if (!isRecording) {
-                    startRecording();
-                } else {
-                    stopRecording();
+        // Processar comando
+        function processCommand(command) {
+            showNotification('Processando seu comando...', 'success');
+            
+            // Mudar ícone para indicar processamento
+            const icon = actionBtn.querySelector('i');
+            const originalIcon = icon.className;
+            icon.className = 'fas fa-circle-notch fa-spin';
+            
+            fetch('/api/voice-command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor: ' + response.status);
                 }
-            } else {
-                // Modo texto: processar comando digitado
-                if (voiceInput.value.trim() !== '') {
-                    processCommand(voiceInput.value);
+                return response.json();
+            })
+            .then(data => {
+                icon.className = originalIcon;
+                
+                if (data.status === 'success') {
+                    showNotification(data.message, 'success');
+                    voiceInput.value = '';
                 } else {
-                    showNotification('Por favor, digite um comando primeiro.', 'error');
+                    showNotification(data.message || 'Erro desconhecido', 'error');
                 }
+            })
+            .catch(error => {
+                icon.className = originalIcon;
+                showNotification('Erro de conexão. Tente novamente.', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        // Mostrar notificação
+        function showNotification(message, type) {
+            notification.className = 'notification ' + type;
+            notificationText.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Permitir enviar comando com Enter
+        voiceInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                actionBtn.click();
             }
         });
-        
-       // →→→ ALTERADO: Substituição completa do sistema de gravação ←←←
-// →→→ Agora usamos a Web Speech API nativa do navegador ←←←
-
-// Botão de ação (escutar/executar)
-actionBtn.addEventListener('click', () => {
-    // →→→ REMOVIDO: Modo voz/texto - agora é apenas voz → texto ←←←
-    if (!isListening) {
-        startListening();
-    } else {
-        stopListening();
-    }
-});
-
-// Botão de começar (mantido igual)
-startBtn.addEventListener('click', () => {
-    voiceInput.focus();
-    showNotification('Digite ou clique em um comando de exemplo para começar.', 'success');
-});
-
-// →→→ NOVO: Verificar suporte a reconhecimento de voz ←←←
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const isSpeechSupported = SpeechRecognition !== undefined;
-
-if (isSpeechSupported) {
-    // →→→ NOVO: Configurar o reconhecimento de voz ←←←
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'pt-BR';
-    
-    // →→→ NOVO: Evento quando o reconhecimento obtém resultado ←←←
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        voiceInput.value = transcript;
-        showNotification('Comando capturado com sucesso!', 'success');
-        
-        // →→→ NOVO: Processar automaticamente após capturar voz ←←←
-        processCommand(transcript);
-    };
-    
-    // →→→ NOVO: Evento para tratar erros ←←←
-    recognition.onerror = function(event) {
-        showNotification('Erro ao capturar áudio: ' + event.error, 'error');
-        stopListening();
-    };
-    
-    // →→→ NOVO: Evento quando o reconhecimento termina ←←←
-    recognition.onend = function() {
-        stopListening();
-    };
-} else {
-    // →→→ NOVO: Feedback se o navegador não suportar reconhecimento de voz ←←←
-    voiceToggle.style.opacity = '0.5';
-    voiceToggle.style.cursor = 'not-allowed';
-    showNotification('Seu navegador não suporta reconhecimento de voz.', 'error');
-}
-
-// →→→ NOVO: Iniciar escuta de voz ←←←
-function startListening() {
-    if (!isSpeechSupported) return;
-    
-    try {
-        recognition.start();
-        isListening = true;
-        
-        // Feedback visual
-        voiceToggle.classList.add('listening');
-        recordingIndicator.style.display = 'block';
-        voiceInput.placeholder = 'Escutando... Fale agora';
-        
-    } catch (error) {
-        console.error('Erro ao iniciar reconhecimento de voz:', error);
-        showNotification('Erro ao iniciar o microfone.', 'error');
-    }
-}
-
-// →→→ NOVO: Parar escuta de voz ←←←
-function stopListening() {
-    if (!isSpeechSupported) return;
-    
-    try {
-        recognition.stop();
-    } catch (error) {
-        console.error('Erro ao parar reconhecimento de voz:', error);
-    }
-    
-    isListening = false;
-    
-    // Restaurar visual
-    voiceToggle.classList.remove('listening');
-    recordingIndicator.style.display = 'none';
-    voiceInput.placeholder = 'Diga um comando... Ex: "Poste no Twitter Olá mundo"';
-}
-
-// →→→ MODIFICADO: Simplificado - removido envio de áudio para servidor ←←←
-// Processar comando (mantido similar)
-function processCommand(command) {
-    showNotification('Processando seu comando...', 'success');
-    
-    // Mudar ícone para indicar processamento
-    const icon = actionBtn.querySelector('i');
-    icon.className = 'loader';
-    
-    fetch('/api/voice-command', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ command: command })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Erro na resposta do servidor: ' + response.status);
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Restaurar ícone
-        icon.className = 'fas fa-microphone';
-        
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            voiceInput.value = '';
-        } else {
-            showNotification(data.message || 'Erro desconhecido', 'error');
-        }
-    })
-    .catch(error => {
-        // Restaurar ícone em caso de erro
-        icon.className = 'fas fa-microphone';
-        showNotification('Erro de conexão. Tente novamente.', 'error');
-        console.error('Error:', error);
     });
-}
-
-// Mostrar notificação (mantido igual)
-function showNotification(message, type) {
-    notification.className = 'notification ' + type;
-    notificationText.textContent = message;
-    notification.classList.add('show');
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 5000);
-}
-
-// →→→ MODIFICADO: Agora funciona sempre, não apenas no modo texto ←←←
-voiceInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        processCommand(voiceInput.value);
-    }
-});
-</script>
+    </script>
 </body>
 </html>
