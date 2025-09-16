@@ -691,6 +691,11 @@
                         <h3>Pesquisar</h3>
                         <p>"Pesquise no Google [termo de busca]"</p>
                     </div>
+                    <div class="command-example" data-command="Abrir calculadora">
+                        <i class="fas fa-calculator"></i>
+                        <h3>Abrir calculadora</h3>
+                        <p>Qual a raiz quadrada de 25?</p>
+                    </div>
                 </div>
             </div>
         </div>
