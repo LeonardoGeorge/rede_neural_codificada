@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\WhisperService;
 use App\Jobs\ProcessTweetJob;
+use App\Models\Note; // ← IMPORT ADICIONADO
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -71,10 +72,6 @@ class VoiceCommandController extends Controller
 
     /**
      * Processa o comando de texto (NLP) e dispara o job para postar no Twitter
-     * AGORA RECEBENDO Request $request PARA PEGAR O COMANDO DO JSON
-     */
-    /**
-     * Processa o comando de texto (NLP) e dispara o job para postar no Twitter
      */
     public function handleCommand(Request $request)
     {
@@ -94,26 +91,50 @@ class VoiceCommandController extends Controller
         $commandText = $request->input('command');
         Log::info("Comando recebido via API: " . $commandText);
 
-        // Processamento de Linguagem Natural (NLP)
+        // 1) Postar no Twitter
         if (preg_match('/poste no twitter (.*)/i', $commandText, $matches)) {
-            $tweetMessage = trim($matches[1]); // Captura a mensagem do tweet
+            $tweetMessage = trim($matches[1]);
 
-            // Dispara o job para a fila, processando assincronamente!
+            // Se ainda não quer publicar, basta logar ou enfileirar.
             ProcessTweetJob::dispatch($tweetMessage);
 
-            // Responde imediatamente para o cliente (usuário)
             return response()->json([
                 'status' => 'success',
                 'message' => 'Seu tweet está sendo processado e será postado em breve!',
-                'command' => $commandText,
+                'action' => 'tweet_queued',
                 'tweet_message' => $tweetMessage,
             ]);
         }
 
-        // Se o comando não for reconhecido
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Desculpe, não entendi o comando. Tente algo como: "Poste no Twitter Minha mensagem"',
-        ], 400);
-    }
-}
+        // 2) Criar Notas (Salvar no banco de dados)
+        if (preg_match('/crie uma nota (.*)/i', $commandText, $matches)) {
+            $noteText = trim($matches[1]);
+
+            // Validação basica
+            if (empty($noteText)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'O texto da nota não pode estar vazio.',
+                ], 400);
+            }
+
+            try {
+                $note = Note::create(['content' => $noteText]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Nota criada com sucesso!',
+                    'action' => 'note_created',
+                    'note' => $note,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Erro ao criar nota: ' . $e->getMessage());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Erro ao criar a nota. Tente novamente mais tarde.',
+                ], 500);
+            } // ← CHAVE DO catch FECHADA
+        } // ← CHAVE DO if DA NOTA FECHADA
+
+    } 
+} 
