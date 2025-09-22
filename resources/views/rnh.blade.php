@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>RNH | Assistente Pessoal Inteligente</title>
+    <title>RNC | Assistente Pessoal Codificavel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -909,45 +909,69 @@
         });
         
         // Processar comando
-        function processCommand(command) {
-            showNotification('Processando seu comando...', 'success');
-            
-            // Mudar ícone para indicar processamento
-            const icon = actionBtn.querySelector('i');
-            const originalIcon = icon.className;
-            icon.className = 'fas fa-circle-notch fa-spin';
-            
-            fetch('/api/voice-command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ command: command })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro na resposta do servidor: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                icon.className = originalIcon;
-                
-                if (data.status === 'success') {
-                    showNotification(data.message, 'success');
-                    voiceInput.value = '';
-                } else {
-                    showNotification(data.message || 'Erro desconhecido', 'error');
-                }
-            })
-            .catch(error => {
-                icon.className = originalIcon;
-                showNotification('Erro de conexão. Tente novamente.', 'error');
-                console.error('Error:', error);
-            });
+      function processCommand(command) {
+    showNotification('Processando seu comando...', 'success');
+    
+    // Mudar ícone para indicar processamento
+    const icon = actionBtn.querySelector('i');
+    const originalIcon = icon.className;
+    icon.className = 'fas fa-circle-notch fa-spin';
+    
+    fetch('/api/voice-command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ command: command })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erro na resposta do servidor: ' + response.status);
         }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // Ações específicas retornadas pelo backend
+            switch (data.action) {
+                case 'open_url':
+                    showNotification(data.message || 'Abrindo...', 'success');
+                    window.open(data.url, '_blank');
+                    break;
+
+                case 'note_created':
+                    showNotification('Nota criada!', 'success');
+                    voiceInput.value = '';
+                    break;
+
+                case 'tweet_queued':
+                    showNotification('Tweet enfileirado para publicação!', 'success');
+                    voiceInput.value = '';
+                    break;
+
+                case 'show_calculation':
+                    showNotification(data.calculation || data.message, 'success');
+                    voiceInput.value = '';
+                    break;
+
+                default:
+                    showNotification(data.message || 'Comando processado com sucesso!', 'success');
+                    voiceInput.value = '';
+            }
+        } else {
+            showNotification(data.message || 'Erro desconhecido', 'error');
+        }
+    })
+    .catch(error => {
+        icon.className = originalIcon;
+        console.error('Error:', error);
+        const msg = error && error.message ? error.message : 'Erro de conexão. Tente novamente.';
+        showNotification(msg, 'error');
+    });
+} 
+
         
         // Mostrar notificação
         function showNotification(message, type) {

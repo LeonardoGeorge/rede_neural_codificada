@@ -23,5 +23,5 @@ Route::get('/', function () {
 Route::view('/rnh', 'rnh');
 
 // Rota para processar o comando de voz vindo do frontend
-Route::post(`/apivoice0command`, [VoiceCommandController::class, 'handleCommand']);
+Route::post('/api/voice-command', [VoiceCommandController::class, 'handleCommand']);
 
