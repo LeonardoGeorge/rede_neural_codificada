@@ -909,13 +909,20 @@
         });
         
         // Processar comando
-      function processCommand(command) {
+    function processCommand(command) {
+    // Prevenir múltiplas requisições simultâneas
+    if (actionBtn.disabled) {
+        showNotification('Comando já em processamento. Aguarde...', 'error');
+        return;
+    }
+    
     showNotification('Processando seu comando...', 'success');
     
     // Mudar ícone para indicar processamento
     const icon = actionBtn.querySelector('i');
     const originalIcon = icon.className;
     icon.className = 'fas fa-circle-notch fa-spin';
+    actionBtn.disabled = true;
     
     fetch('/api/voice-command', {
         method: 'POST',
@@ -926,10 +933,25 @@
         },
         body: JSON.stringify({ command: command })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Erro na resposta do servidor: ' + response.status);
+    .then(async response => {
+        // Tratamento específico para diferentes códigos de erro
+        if (response.status === 409) {
+            throw new Error('Conflito: Servidor ocupado. Tente novamente em alguns segundos.');
         }
+        
+        if (response.status === 404) {
+            throw new Error('Serviço não encontrado (404). Verifique a conexão.');
+        }
+        
+        if (response.status === 500) {
+            const errorData = await response.text();
+            throw new Error('Erro interno do servidor. Tente mais tarde.');
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+        
         return response.json();
     })
     .then(data => {
@@ -938,7 +960,9 @@
             switch (data.action) {
                 case 'open_url':
                     showNotification(data.message || 'Abrindo...', 'success');
-                    window.open(data.url, '_blank');
+                    if (data.url) {
+                        window.open(data.url, '_blank');
+                    }
                     break;
 
                 case 'note_created':
@@ -961,17 +985,33 @@
                     voiceInput.value = '';
             }
         } else {
-            showNotification(data.message || 'Erro desconhecido', 'error');
+            showNotification(data.message || 'Erro desconhecido no processamento', 'error');
         }
     })
     .catch(error => {
-        icon.className = originalIcon;
         console.error('Error:', error);
-        const msg = error && error.message ? error.message : 'Erro de conexão. Tente novamente.';
-        showNotification(msg, 'error');
+        
+        // Mensagens de erro mais específicas
+        let errorMessage = 'Erro de conexão. Tente novamente.';
+        
+        if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Erro de conexão com o servidor. Verifique sua internet.';
+        } else if (error.message.includes('Conflict') || error.message.includes('409')) {
+            errorMessage = 'Servidor ocupado. Aguarde e tente novamente.';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Serviço temporariamente indisponível.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showNotification(errorMessage, 'error');
+    })
+    .finally(() => {
+        // Restaurar estado original
+        icon.className = originalIcon;
+        actionBtn.disabled = false;
     });
-} 
-
+}
         
         // Mostrar notificação
         function showNotification(message, type) {
