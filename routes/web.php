@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\VoiceCommandController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,8 +14,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Pagina de apresentação
 Route::get('/', function () {
     return view('welcome');
 });
 
+// Rota para uso dos comandos de voz e transcrição
 Route::view('/rnh', 'rnh');
+
+// Rota para processar o comando de voz vindo do frontend
+Route::post(`/apivoice0command`, [VoiceCommandController::class, 'handleCommand']);
+
